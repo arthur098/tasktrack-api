@@ -1,6 +1,8 @@
 package com.tasktrack_api.security.filter;
 
+import com.tasktrack_api.model.User;
 import com.tasktrack_api.security.service.TokenService;
+import com.tasktrack_api.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,12 +15,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
     private TokenService tokenService;
+
+    @Autowired
+    private UserService userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -27,10 +33,12 @@ public class JwtFilter extends OncePerRequestFilter {
         if(authHeader != null && authHeader.startsWith("Bearer")) {
             String token = authHeader.substring(7);
             String username = this.tokenService.validateToken(token);
+            Optional<User> userOptional = this.userService.findUserByUsername(username);
+            userOptional.ifPresent(u -> {
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(u, null, List.of());
 
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(username, null, List.of());
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            });
         }
 
         filterChain.doFilter(request, response);
